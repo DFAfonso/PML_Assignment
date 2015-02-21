@@ -64,14 +64,209 @@ img {
 </div>
 
 
-<p>Basic Intro and analysis here.</p>
-<p>Discuss PCA and 4 models chosen here</p>
-<p>Model 1 discussion, accuracy, cross validation, out of sample error, etc…</p>
-<p>Same as above, but this time for model 2.</p>
-<p>Model 3.</p>
-<p>Model 4.</p>
-<p>And conclusions, including results of predictions. (i.e. question 3 and 6 were wrong for all models)</p>
-<p>Appendix here if needed - This may be to discuss PAM - unsurpevised algorithm with 5 clusters and why it failed</p>
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>This project uses data from accelerometers of 6 participants to quantify how well they are doing a particular activity. How well the activity is performed is assigned one of 5 “grades” - A, B, C, D or E.</p>
+<p>4 prediction models were created by training each model on the accelerometer training data provided, then the models were tested against the testing data provided for this assignment.</p>
+<p>The Caret package will be used for training and cross-validation of the model(s):</p>
+<pre class="r"><code>library(caret)</code></pre>
+<pre class="r"><code>training_set &lt;- read.csv(&quot;pml-training.csv&quot;, stringsAsFactors = FALSE)
+
+testing_set &lt;- read.csv(&quot;pml-testing.csv&quot;, stringsAsFactors = FALSE)</code></pre>
+<p>The training set consisted of 19622 observations of 160 variables, while the test set consisted of 20 observations of 160 variables.</p>
+<p>It was noted that 100 of the variables in the test set consisted exclusively of NA values. As a result, it was decided that all 100 of these variables would be omitted from the training set when creating the models. A further reduction of variables was done by omitting 7 others that were non-numeric, as well as omitting the “classe” variable (which is the variable to be predicted). The training set at this point now consisted of 19622 observations of 52 variables.</p>
+<p>To further reduce the complexity of the models, Principal Component Analysis (PCA) was performed in order to capture 95% of the variability:</p>
+<pre><code>## 
+## Call:
+## preProcess.default(x = scale(as.matrix(train2[, 8:59])), method = &quot;pca&quot;)
+## 
+## Created from 19622 samples and 52 variables
+## Pre-processing: principal component signal extraction, scaled, centered 
+## 
+## PCA needed 25 components to capture 95 percent of the variance</code></pre>
+<p>95% variability was captured by 25 principal components, and these were the ones trained on by the prediction models.</p>
+<p>4 models were then created using caret’s train() function:</p>
+<ol style="list-style-type: decimal">
+<li>Random Forest</li>
+<li>Partial Least Squares</li>
+<li>Regularized Discriminant Analysis</li>
+<li>Support Vector Machines with Radial Basis Function Kernel</li>
+</ol>
+<p>To determine accuracy, 3 of 4 models applied bootstrapping, and in one model k-fold cross validation was used (to also estimate out of sample error). Results will be discussed in the various sections below.</p>
+<div id="model-1---random-forest" class="section level3">
+<h3>Model 1 - Random Forest</h3>
+<p>A Random Forest Algorithm was applied to the training set data. The data was bootstrapped 25 times in order to develop an accuracy prediction:</p>
+<pre><code>## Random Forest 
+## 
+## 19622 samples
+##    24 predictor
+##     5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## No pre-processing
+## Resampling: Bootstrapped (25 reps) 
+## 
+## Summary of sample sizes: 19622, 19622, 19622, 19622, 19622, 19622, ... 
+## 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa      Accuracy SD  Kappa SD   
+##    2    0.9744773  0.9677082  0.002171002  0.002756059
+##   13    0.9695153  0.9614327  0.001890501  0.002406445
+##   25    0.9579959  0.9468620  0.005066561  0.006413453
+## 
+## Accuracy was used to select the optimal model using  the largest value.
+## The final value used for the model was mtry = 2.</code></pre>
+<p>The final model, had an expected accuracy of 97.4%. The final model was also showing an expected OOB estimate:</p>
+<pre><code>## 
+## Call:
+##  randomForest(x = x, y = y, mtry = param$mtry) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 2
+## 
+##         OOB estimate of  error rate: 1.58%
+## Confusion matrix:
+##      A    B    C    D    E class.error
+## A 5551    8   13    5    3 0.005197133
+## B   52 3718   23    1    3 0.020805899
+## C    3   31 3361   24    3 0.017825833
+## D    2    1   96 3114    3 0.031716418
+## E    0   11   16   12 3568 0.010812309</code></pre>
+<p>This model predicted 17 out of 20 correct answers for the test data, for an accuracy of 0.85 .</p>
+</div>
+<div id="model-2---partial-least-squares-pls" class="section level3">
+<h3>Model 2 - Partial Least Squares (PLS)</h3>
+<p>A Partial Least Squares algorithm was selected as the 2nd model. In this instance, k-fold cross validation was performed 20 times consisting of k = 20 folds each:</p>
+<pre><code>## Partial Least Squares 
+## 
+## 19622 samples
+##    24 predictor
+##     5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## Pre-processing: centered, scaled 
+## Resampling: Cross-Validated (20 fold, repeated 20 times) 
+## 
+## Summary of sample sizes: 18641, 18642, 18640, 18640, 18640, 18642, ... 
+## 
+## Resampling results across tuning parameters:
+## 
+##   ncomp  Accuracy   Kappa      Accuracy SD  Kappa SD  
+##   1      0.3614821  0.1590659  0.009080014  0.01208875
+##   2      0.4386047  0.2748784  0.012236641  0.01604145
+##   3      0.4811261  0.3324622  0.013941870  0.01817172
+## 
+## Accuracy was used to select the optimal model using  the largest value.
+## The final value used for the model was ncomp = 3.</code></pre>
+<p>The accuracy predicted by this model can be classified as relatively poor, as even the best PLS model selected had an expected accuracy of only 0.48 (this was after 20 runs of 20-fold cross validation). This is validated below by the results of the in sample confusion matrix:</p>
+<pre><code>## $table
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 4135 1295 1425  467  584
+##          B  430 1169  154  982  525
+##          C  519  580 1608  771  460
+##          D  360  169   75  640  115
+##          E  136  584  160  356 1923
+## 
+## $overall
+##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
+##      0.4828764      0.3347403      0.4758620      0.4898958      0.2843747 
+## AccuracyPValue  McnemarPValue 
+##      0.0000000      0.0000000</code></pre>
+<p>When this model was used against the 20 sample test-set, the results were quite poor. Accuracy of only 0.55 (11 out of 20 correct). While this accuracy number is greater than predicted by the in sample accuracy, this is likely attributable to the small size of the test set (20) and overall variability.</p>
+</div>
+<div id="model-3---regularized-discriminant-analysis" class="section level3">
+<h3>Model 3 - Regularized Discriminant Analysis</h3>
+<p>A Regularized Discriminant Analysis algorithm was applied to the training set data. The data was bootstrapped 25 times in order to develop an accuracy prediction:</p>
+<pre><code>## Regularized Discriminant Analysis 
+## 
+## 19622 samples
+##    24 predictor
+##     5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## No pre-processing
+## Resampling: Bootstrapped (25 reps) 
+## 
+## Summary of sample sizes: 19622, 19622, 19622, 19622, 19622, 19622, ... 
+## 
+## Resampling results across tuning parameters:
+## 
+##   gamma  lambda  Accuracy   Kappa      Accuracy SD  Kappa SD   
+##   0.0    0.0     0.7407382  0.6748533  0.012127372  0.014162032
+##   0.0    0.5     0.7401780  0.6741621  0.012466317  0.014565592
+##   0.0    1.0     0.7405377  0.6745977  0.012188324  0.014219787
+##   0.5    0.0     0.5948208  0.4964612  0.023190868  0.025774088
+##   0.5    0.5     0.5946492  0.4961382  0.023220877  0.025765732
+##   0.5    1.0     0.5948538  0.4964956  0.023195769  0.025654113
+##   1.0    0.0     0.4531003  0.3051408  0.006166893  0.007712853
+##   1.0    0.5     0.4532931  0.3050597  0.006093217  0.007646483
+##   1.0    1.0     0.4531558  0.3049868  0.006421289  0.008335687
+## 
+## Accuracy was used to select the optimal model using  the largest value.
+## The final values used for the model were gamma = 0 and lambda = 0.</code></pre>
+<p>After bootstrapping, the expected accuracy of the best model selected was 0.74.</p>
+<pre><code>## $table
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 3817  117   17   46   11
+##          B  618 3046  395  198  374
+##          C  926  539 2939  742  201
+##          D  158   28   56 2146  370
+##          E   61   67   15   84 2651
+## 
+## $overall
+##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
+##      0.7440118      0.6795028      0.7378442      0.7501071      0.2843747 
+## AccuracyPValue  McnemarPValue 
+##      0.0000000      0.0000000</code></pre>
+<p>The accuracy on the test set was 0.65 as 13 out of 20 answers were correct. It should be noted, that out of all 4 models tested, model 3 was the only one to get answer 8 correct on the test set, all 3 other models selected the same incorrect value.</p>
+</div>
+<div id="model-4---support-vector-machines-with-radial-basis-function-kernel" class="section level3">
+<h3>Model 4 - Support Vector Machines with Radial Basis Function Kernel</h3>
+<p>A Support Vector Machine (SVM) algorithm was selected as the 4th model. SVMs are normally only used for binary classifications, but they can be used for multiple classification problems (such as this one - selecting amongst 5 values), via a voting technique against all binary subclassifiers to find the correct classification. 25 repetitions of bootstrapping resulted in a predicted accuracy of 0.92:</p>
+<pre><code>## Support Vector Machines with Radial Basis Function Kernel 
+## 
+## 19622 samples
+##    24 predictor
+##     5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## No pre-processing
+## Resampling: Bootstrapped (25 reps) 
+## 
+## Summary of sample sizes: 19622, 19622, 19622, 19622, 19622, 19622, ... 
+## 
+## Resampling results across tuning parameters:
+## 
+##   C     Accuracy   Kappa      Accuracy SD  Kappa SD   
+##   0.25  0.8662189  0.8305134  0.005190016  0.006489627
+##   0.50  0.8961197  0.8683407  0.004798201  0.006067716
+##   1.00  0.9224127  0.9016911  0.003920936  0.004972076
+## 
+## Tuning parameter 'sigma' was held constant at a value of 0.02609233
+## Accuracy was used to select the optimal model using  the largest value.
+## The final values used for the model were sigma = 0.02609233 and C = 1.</code></pre>
+<p>The in sample accuracy was quite close to the above prediction, as it resulted in an accuracy of 0.93:</p>
+<pre><code>## $table
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 5549  304   14   25    3
+##          B   11 3323  118   18   30
+##          C   15  151 3188  327  128
+##          D    3   13   97 2840  106
+##          E    2    6    5    6 3340
+## 
+## $overall
+##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
+##   9.295689e-01   9.107537e-01   9.258992e-01   9.331106e-01   2.843747e-01 
+## AccuracyPValue  McnemarPValue 
+##   0.000000e+00  8.862039e-131</code></pre>
+<p>When used against the test set, Model 4 had an accuracy of 0.80 (16 out of 20 correct).</p>
+</div>
+<div id="conclusions" class="section level3">
+<h3>Conclusions</h3>
+<p>Of the 4 models selected, the Random Forest algorithm had the highest accuracy level and it also performed best against the test set with an accuracy of 0.85. When combining algorithms, the best result against the test set was 0.90 as all 4 algorithms provided incorrect answers on 2 of the questions (3 &amp; 6, with only algorithm 3 getting question 8 correct).</p>
+<p>When predicting accuracy, 3 of the 4 models used the bootstrap method and over estimated their accuracy. This was possibly due to the small size of the test set (only 20 observations) and inherent variability. Interestingly enough, model 2 (using k-fold cross validation to estimate accuracy and out of sample error) did have a higher accuracy on the test set then predicted, but again, this may be attributable to the small size of the test set.</p>
+</div>
+</div>
 
 
 </div>

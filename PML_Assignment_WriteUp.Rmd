@@ -3,26 +3,67 @@ title: "Practical Machine Learning - Assignment"
 output: html_document
 ---
 
-Basic Intro and analysis here.
+##Introduction
+
+This project uses data from accelerometers of 6 participants to quantify how well they are doing a particular activity. How well the activity is performed is assigned one of 5 "grades" - A, B, C, D or E.   
+
+4 prediction models were created by training each model on the accelerometer training data provided, then the models were tested against the testing data provided for this assignment.
+
+
+The Caret package will be used for training and cross-validation of the model(s):
+
+```{r, warning=FALSE, message=FALSE}
+library(caret)
+```
+
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-library(cluster)
-library(caret)
-
 setwd("C:/Users/DarthBunny/Desktop/R-Code/PML_Assignment")
+
+```
+
+
+```{r, warning=FALSE, message=FALSE}
 
 training_set <- read.csv("pml-training.csv", stringsAsFactors = FALSE)
 
 testing_set <- read.csv("pml-testing.csv", stringsAsFactors = FALSE)
+```
 
-#create a data set for the testing set where the columns that are all NA are removed
+The training set consisted of 19622 observations of 160 variables, while the test set consisted of 20 observations of 160 variables.
+
+It was noted that 100 of the variables in the test set consisted exclusively of NA values.   As a result, it was decided that all 100 of these variables would be omitted from the training set when creating the models.   A further reduction of variables was done by omitting 7 others that were non-numeric, as well as omitting the "classe" variable (which is the variable to be predicted).  The training set at this point now consisted of 19622 observations of 52 variables.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+#create a data set from the testing set where the columns that are all NA are removed
 test2 <- testing_set[,colSums(is.na(testing_set)) != nrow(testing_set)]
 
 #subset training data to only include columns that are not NA in the test set
 train2 <- training_set[,colSums(is.na(testing_set)) != nrow(testing_set)]
 ```
 
-Discuss PCA and 4 models chosen here
+To further reduce the complexity of the models, Principal Component Analysis (PCA) was performed in order to capture 95% of the variability:
+
+```{r, echo=FALSE, warning=FALSE,message=FALSE}
+
+preProcess(scale(as.matrix(train2[,8:59])), method = "pca")
+
+```
+
+
+95% variability was captured by 25 principal components, and these were the ones trained on by the prediction models.
+
+4 models were then created using caret's train() function:
+
+1. Random Forest
+2. Partial Least Squares
+3. Regularized Discriminant Analysis
+4. Support Vector Machines with Radial Basis Function Kernel
+
+
+To determine accuracy, 3 of 4 models applied bootstrapping, and in one model k-fold cross validation was used (to also estimate out of sample error).  Results will be discussed in the various sections below.
+
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # subset train2 to only it's numeric columns, while centering and scaling the values, then using PCA
@@ -46,8 +87,26 @@ modelFit <- readRDS("model_1.rds")
 trainingResults_1 <- predict(modelFit,newdata = trainPC)
 results <- predict(modelFit, newdata = testPC)
 ```
+### Model 1 - Random Forest
 
-Model 1 discussion, accuracy, cross validation, out of sample error, etc...
+A Random Forest Algorithm was applied to the training set data.   The data was bootstrapped 25 times in order to develop an accuracy prediction:
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+modelFit
+
+```
+
+The final model, had an expected accuracy of 97.4%.   The final model was also showing an expected OOB estimate:
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+modelFit$finalModel
+
+```
+
+This model predicted 17 out of 20 correct answers for the test data, for an accuracy of 0.85 .
+
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 ctrl <- trainControl(method = "repeatedcv", number = 20, repeats = 20)
@@ -67,7 +126,24 @@ results_2 <- predict(model_2, newdata = testPC)
 
 ```
 
-Same as above, but this time for model 2.
+### Model 2 - Partial Least Squares (PLS)
+
+A Partial Least Squares algorithm was selected as the 2nd model.   In this instance, k-fold cross validation was performed 20 times consisting of k = 20 folds each:
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+model_2
+
+```
+
+The accuracy predicted by this model can be classified as relatively poor, as even the best PLS model selected had an expected accuracy of only 0.48 (this was after 20 runs of 20-fold cross validation).   This is validated below by the results of the in sample confusion matrix:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+confusionMatrix(trainingResults_2, training_set$classe)[2:3]
+
+```
+
+When this model was used against the 20 sample test-set, the results were quite poor.  Accuracy of only 0.55 (11 out of 20 correct).  While this accuracy number is greater than predicted by the in sample accuracy, this is likely attributable to the small size of the test set (20) and overall variability.
+
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 set.seed(41)
@@ -83,7 +159,26 @@ results_3 <- predict(model_3, newdata = testPC)
 
 ```
 
-Model 3.
+### Model 3 - Regularized Discriminant Analysis
+
+A Regularized Discriminant Analysis algorithm was applied to the training set data.   The data was bootstrapped 25 times in order to develop an accuracy prediction:
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+model_3
+
+```
+
+After bootstrapping, the expected accuracy of the best model selected was 0.74.
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+confusionMatrix(trainingResults_3, training_set$classe)[2:3]
+
+```
+
+The accuracy on the test set was 0.65 as 13 out of 20 answers were correct.  It should be noted, that out of all 4 models tested, model 3 was the only one to get answer 8 correct on the test set, all 3 other models selected the same incorrect value.
+
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 set.seed(41)
@@ -98,13 +193,33 @@ trainingResults_4 <- predict(model_4,newdata = trainPC)
 results_4 <- predict(model_4, newdata = testPC)
 
 ```
-Model 4.
+
+### Model 4 - Support Vector Machines with Radial Basis Function Kernel
+
+A Support Vector Machine (SVM) algorithm was selected as the 4th model.  SVMs are normally only used for binary classifications, but they can be used for multiple classification problems (such as this one - selecting amongst 5 values), via a voting technique against all binary subclassifiers to find the correct classification.   25 repetitions of bootstrapping resulted in a predicted accuracy of 0.92: 
 
 
-And conclusions, including results of predictions. (i.e. question 3 and 6 were wrong for all models)
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+model_4
+
+```
+
+
+The in sample accuracy was quite close to the above prediction, as it resulted in an accuracy of 0.93:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+confusionMatrix(trainingResults_4, training_set$classe)[2:3]
+```
+
+When used against the test set, Model 4 had an accuracy of 0.80 (16 out of 20 correct).
+
+### Conclusions
+
+Of the 4 models selected, the Random Forest algorithm had the highest accuracy level and it also performed best against the test set with an accuracy of 0.85.   When combining algorithms, the best result against the test set was 0.90 as all 4 algorithms provided incorrect answers on 2 of the questions (3 & 6, with only algorithm 3 getting question 8 correct).
+
+When predicting accuracy, 3 of the 4 models used the bootstrap method and over estimated their accuracy.  This was possibly due to the small size of the test set (only 20 observations) and inherent variability.   Interestingly enough, model 2 (using k-fold cross validation to estimate accuracy and out of sample error) did have a higher accuracy on the test set then predicted, but again, this may be attributable to the small size of the test set.
 
 
 
-
-Appendix here if needed - This may be to discuss PAM - unsurpevised algorithm with 5 clusters and why it failed
 
