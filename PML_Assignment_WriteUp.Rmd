@@ -3,9 +3,7 @@ title: "Practical Machine Learning - Assignment"
 output: html_document
 ---
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Basic Intro and analysis here.
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 library(cluster)
@@ -22,7 +20,11 @@ test2 <- testing_set[,colSums(is.na(testing_set)) != nrow(testing_set)]
 
 #subset training data to only include columns that are not NA in the test set
 train2 <- training_set[,colSums(is.na(testing_set)) != nrow(testing_set)]
+```
 
+Discuss PCA and 4 models chosen here
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # subset train2 to only it's numeric columns, while centering and scaling the values, then using PCA
 # to capture 95% of the variance (in this instance it will be with 25 components)
 
@@ -43,7 +45,11 @@ modelFit <- readRDS("model_1.rds")
 
 trainingResults_1 <- predict(modelFit,newdata = trainPC)
 results <- predict(modelFit, newdata = testPC)
+```
 
+Model 1 discussion, accuracy, cross validation, out of sample error, etc...
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 ctrl <- trainControl(method = "repeatedcv", number = 20, repeats = 20)
 
 
@@ -59,7 +65,11 @@ trainingResults_2 <- predict(model_2,newdata = trainPC)
 results_2 <- predict(model_2, newdata = testPC)
 
 
+```
 
+Same as above, but this time for model 2.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 set.seed(41)
 
 # model_3 <- train(factor(training_set$classe, ordered = TRUE) ~., method = "rda",
@@ -71,7 +81,11 @@ model_3 <- readRDS("model_3.rds")
 trainingResults_3 <- predict(model_3,newdata = trainPC)
 results_3 <- predict(model_3, newdata = testPC)
 
+```
 
+Model 3.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 set.seed(41)
 
 # model_4 <- train(factor(training_set$classe, ordered = TRUE) ~., method = "svmRadial",
@@ -84,4 +98,13 @@ trainingResults_4 <- predict(model_4,newdata = trainPC)
 results_4 <- predict(model_4, newdata = testPC)
 
 ```
+Model 4.
+
+
+And conclusions, including results of predictions. (i.e. question 3 and 6 were wrong for all models)
+
+
+
+
+Appendix here if needed - This may be to discuss PAM - unsurpevised algorithm with 5 clusters and why it failed
 
